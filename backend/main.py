@@ -20,7 +20,13 @@ class InputText(BaseModel):
 
 @app.post("/question")
 def process_input_text(input_data: InputText):
-    input_data.input_text = "It's working!"
-    # Your processing logic here
-    # Example: Just returning the input text for now
-    return {"response": input_data.input_text}
+    # Check for specific input texts and return different responses
+    if input_data.input_text.lower() == 'hi':
+        return {"response": "New message is incoming"}
+    elif input_data.input_text.lower() == 'hello':
+        return {"response": "Hello there!"}
+    else:
+        input_data.input_text = "It's working!"
+        # Your default processing logic here
+        # Example: Just returning the input text for now
+        return {"response": input_data.input_text}

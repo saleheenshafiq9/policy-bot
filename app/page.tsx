@@ -11,10 +11,11 @@ import { faRobot } from "@fortawesome/free-solid-svg-icons";
 
 export default function Home() {
   const [messageText, setMessageText] = useState("");
-  const [response, setResponse] = useState("");
+  const [responses, setResponses] = useState<string[]>([]);
   const [newMsg, setNewMsg] = useState<
     { _id: string; role: string; content: string }[]
   >([]);
+  const [responseIndex, setResponseIndex] = useState(0);
   const [generateResponse, setGenerateResponse] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,9 +41,10 @@ export default function Home() {
         input_text: messageText,
       });
 
-      setResponse(res.data.response);
+      setResponses((prev) => [...prev, res.data.response]);
+      setResponseIndex(responses.length);
+
       setGenerateResponse(false);
-      console.log(response);
     } catch (error) {
       console.error("Error:", error);
     }
@@ -64,10 +66,12 @@ export default function Home() {
 
         <div className="bg-zinc-50 flex flex-col overflow-hidden">
           <div className="flex-1 text-black overflow-scroll">
-            {newMsg.map((message) => (
+            {newMsg.map((message, index) => (
               <React.Fragment key={message._id}>
                 <Message role={message.role} content={message.content} />
-                {!!response && <Message role="SRBD-BOT" content={response} />}
+                {responses.length > 0 && responses[index] && (
+                  <Message role="SRBD-BOT" content={responses[index]} />
+                )}
               </React.Fragment>
             ))}
           </div>
