@@ -1,7 +1,8 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRobot, faUser } from "@fortawesome/free-solid-svg-icons";
 import Image from "next/image";
-export const Message = ({ role, content }) => {
+
+export const Message = ({ role, content, source }) => {
   return (
     <div
       className={`grid grid-cols-[30px_1fr] gap-5 p-5 ${
@@ -20,7 +21,12 @@ export const Message = ({ role, content }) => {
           </div>
         )}
       </div>
-      <div>{content}</div>
+      <div className="flex flex-col">
+        <div>{content}</div>
+        {role === "SRBD-BOT" && (
+          <div className="text-sm text-gray-500 mt-1">{source}</div>
+        )}
+      </div>
     </div>
   );
 };

@@ -2,26 +2,75 @@
 import Image from "next/image";
 import Head from "next/head";
 import axios from "axios";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { v4 as uuid } from "uuid";
 import { Message } from "@/components/message";
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faRobot } from "@fortawesome/free-solid-svg-icons";
+import { faRobot, faPlus, faMessage } from "@fortawesome/free-solid-svg-icons";
+import Link from "next/link";
+
+interface ResponseData {
+  response: string;
+  source: string;
+}
 
 export default function Home() {
   const [messageText, setMessageText] = useState("");
-  const [responses, setResponses] = useState<string[]>([]);
+  const [messageTitle, setMessageTitle] = useState("");
+  const [responses, setResponses] = useState<ResponseData[]>([]);
   const [newMsg, setNewMsg] = useState<
     { _id: string; role: string; content: string }[]
   >([]);
   const [responseIndex, setResponseIndex] = useState(0);
   const [generateResponse, setGenerateResponse] = useState(false);
+  const [chatList, setChatList] = useState([
+    // Sample chat history data
+    {
+      _id: uuid(),
+      content: "Hello, SRBD-BOT!",
+    },
+    {
+      _id: uuid(),
+      content: "Hi there! How can I help you today?",
+    },
+    // Add more dummy messages as needed
+  ] as any[]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null); // Create a ref for the textarea
+
+  useEffect(() => {
+    // Load chat history from local storage when the component mounts
+    const storedChatList = localStorage.getItem("chatList");
+    if (storedChatList) {
+      setChatList(JSON.parse(storedChatList));
+    }
+
+    // ... (remaining useEffect logic)
+  }, []);
+
+  useEffect(() => {
+    // Save chat history to local storage whenever newMsg or responses change
+    localStorage.setItem("chatList", JSON.stringify(chatList));
+  }, [newMsg, responses, chatList]);
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [messageText, generateResponse]);
+
+  useEffect(() => {
+    if (newMsg.length > 0) {
+      const messageList = document.getElementById("message-list"); // Replace with your element ID
+      if (messageList) {
+        messageList.scrollTop = messageList.scrollHeight;
+      }
+    }
+  }, [newMsg]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setGenerateResponse(true);
-
+    setMessageTitle(messageText);
     // Update this line to include the 'return' statement
     setNewMsg((prev) => {
       const newMsg = [
@@ -32,7 +81,7 @@ export default function Home() {
           content: messageText,
         },
       ];
-      return newMsg; // Add this line to return the new array
+      return newMsg;
     });
     setMessageText("");
 
@@ -41,37 +90,96 @@ export default function Home() {
         input_text: messageText,
       });
 
-      setResponses((prev) => [...prev, res.data.response]);
-      setResponseIndex(responses.length);
+      // Update the responses array with the new response object
+      setResponses((prev) => [...prev, res.data as ResponseData]);
 
+      // Reset the responseIndex to the last index in the responses array
+      setResponseIndex(responses.length);
       setGenerateResponse(false);
     } catch (error) {
       console.error("Error:", error);
     }
   };
 
+  const handleNewChatClick = () => {
+    // Add a new chat to chatList
+    const newChat = {
+      _id: uuid(),
+      content: messageTitle, // Set content to the current messageText state
+    };
+
+    // Update the chatList state with the new chat
+    setChatList((prevChatList) => [newChat, ...prevChatList]);
+
+    // Reset necessary states
+    setResponses([]);
+    setNewMsg([]);
+    setResponseIndex(0);
+    setGenerateResponse(false);
+    setMessageText(""); // Optionally reset messageText to empty string
+    setMessageTitle("");
+  };
   return (
     <>
       <Head>
         <title>SRBD Bot</title>
       </Head>
       <div className="grid h-screen grid-cols-[260px_1fr]">
-        <div className="bg-blue-500 text-white flex flex-col items-center justify-center">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-700 text-white flex flex-col overflow-hidden">
+          <Link
+            href="/"
+            onClick={handleNewChatClick} // Add the click handler to reset states
+            className="side-menu-item bg-zinc-50 hover:bg-blue-100 text-blue-600"
+          >
+            <FontAwesomeIcon icon={faPlus} className="text-blue-600" />
+            New Chat
+          </Link>
+          <div className="flex-1 overflow-auto bg-blue-600">
+            {chatList.map((chatItem, index) => (
+              <Link
+                key={index}
+                href="/chat" // Update the href based on your requirements
+                className="side-menu-item bg-blue-500 hover:bg-blue-700 text-white"
+              >
+                {/* Display chat item content here, adjust as needed */}
+                <FontAwesomeIcon icon={faMessage} className="text-white" />
+                {chatItem.content}
+              </Link>
+            ))}
+          </div>
           {/* Using size attribute */}
-          <FontAwesomeIcon icon={faRobot} className="text-blue-200" size="7x" />
+          <FontAwesomeIcon
+            icon={faRobot}
+            className="text-blue-200 pt-5"
+            size="4x"
+          />
 
           {/* Text underneath */}
-          <div className="mt-2 text-xl">SRBD-BOT</div>
+          <div className="mt-2 text-xl justify-center items-center flex flex-col p-3">
+            SRBD-BOT
+          </div>
         </div>
 
         <div className="bg-zinc-50 flex flex-col overflow-hidden">
-          <div className="flex-1 text-black overflow-scroll">
+          <div className="flex-1 text-black overflow-scroll" id="message-list">
             {newMsg.map((message, index) => (
               <React.Fragment key={message._id}>
-                <Message role={message.role} content={message.content} />
+                <Message
+                  role={message.role}
+                  content={message.content}
+                  source=""
+                />
                 {responses.length > 0 && responses[index] && (
-                  <Message role="SRBD-BOT" content={responses[index]} />
+                  <Message
+                    role="SRBD-BOT"
+                    content={responses[index].response}
+                    source={responses[index].source}
+                  />
                 )}
+                <div
+                  ref={(el) => el && el.scrollIntoView({ behavior: "smooth" })}
+                />{" "}
+                {/* Add ref for auto-scroll */}
               </React.Fragment>
             ))}
           </div>
@@ -79,9 +187,18 @@ export default function Home() {
             <form onSubmit={handleSubmit}>
               <fieldset className="flex gap-2" disabled={generateResponse}>
                 <textarea
+                  ref={textareaRef} // Assign the ref to the textarea
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Check if the Enter key is pressed
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault(); // Prevent the default behavior (e.g., newline)
+                      handleSubmit(e); // Call your submit function
+                    }
+                  }}
                   placeholder={generateResponse ? "" : "Ask me anything..."}
+                  autoFocus
                   className="w-full resize-none rounded-md bg-blue-50 text-black focus:border-blue-500 focus:bg-zinc-50 focus:outline-blue-500 p-1"
                 />
                 <button type="submit" className="btn">

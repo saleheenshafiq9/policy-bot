@@ -1,4 +1,3 @@
-# backend/main.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -18,15 +17,19 @@ app.add_middleware(
 class InputText(BaseModel):
     input_text: str
 
-@app.post("/question")
+class ResponseData(BaseModel):
+    response: str
+    source: str
+
+@app.post("/question", response_model=ResponseData)
 def process_input_text(input_data: InputText):
     # Check for specific input texts and return different responses
     if input_data.input_text.lower() == 'hi':
-        return {"response": "New message is incoming"}
+        return {"response": "New message is incoming", "source": "Bot"}
     elif input_data.input_text.lower() == 'hello':
-        return {"response": "Hello there!"}
+        return {"response": "Hello there!", "source": "Bot"}
     else:
         input_data.input_text = "It's working!"
         # Your default processing logic here
         # Example: Just returning the input text for now
-        return {"response": input_data.input_text}
+        return {"response": input_data.input_text, "source": "Default"}
