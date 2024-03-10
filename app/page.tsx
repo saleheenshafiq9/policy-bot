@@ -4,7 +4,8 @@ import Head from "next/head";
 import axios from "axios";
 import { useState, useRef, useEffect } from "react";
 import { v4 as uuid } from "uuid";
-import { Message } from "@/components/message";
+import { Message } from "@/components/Message";
+import { SkeletonMessage } from "@/components/SkeletonMessage";
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRobot, faPlus, faMessage } from "@fortawesome/free-solid-svg-icons";
@@ -51,21 +52,16 @@ export default function Home() {
   useEffect(() => {
     // Save chat history to local storage whenever newMsg or responses change
     localStorage.setItem("chatList", JSON.stringify(chatList));
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
   }, [newMsg, responses, chatList]);
+
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
   }, [messageText, generateResponse]);
-
-  useEffect(() => {
-    if (newMsg.length > 0) {
-      const messageList = document.getElementById("message-list"); // Replace with your element ID
-      if (messageList) {
-        messageList.scrollTop = messageList.scrollHeight;
-      }
-    }
-  }, [newMsg]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,7 +130,7 @@ export default function Home() {
             <FontAwesomeIcon icon={faPlus} className="text-blue-600" />
             New Chat
           </Link>
-          <div className="flex-1 overflow-auto bg-blue-600">
+          <div className="flex-1 overflow-auto">
             {chatList.map((chatItem, index) => (
               <Link
                 key={index}
@@ -161,29 +157,70 @@ export default function Home() {
         </div>
 
         <div className="bg-zinc-50 flex flex-col overflow-hidden">
-          <div className="flex-1 text-black overflow-scroll" id="message-list">
-            {newMsg.map((message, index) => (
-              <React.Fragment key={message._id}>
-                <Message
-                  role={message.role}
-                  content={message.content}
-                  source=""
-                />
-                {responses.length > 0 && responses[index] && (
+          <div
+            className="flex-1 text-black overflow-y-scroll"
+            id="message-list"
+          >
+            {newMsg.length > 0 ? (
+              newMsg.map((message, index) => (
+                <React.Fragment key={message._id}>
                   <Message
-                    role="SRBD-BOT"
-                    content={responses[index].response}
-                    source={responses[index].source}
+                    role={message.role}
+                    content={message.content}
+                    source=""
                   />
-                )}
-                <div
-                  ref={(el) => el && el.scrollIntoView({ behavior: "smooth" })}
-                />{" "}
-                {/* Add ref for auto-scroll */}
-              </React.Fragment>
-            ))}
+                  {responses.length > 0 && responses[index] ? (
+                    <Message
+                      role="SRBD-BOT"
+                      content={responses[index].response}
+                      source={responses[index].source}
+                    />
+                  ) : (
+                    generateResponse && <SkeletonMessage />
+                  )}
+
+                  <div
+                    ref={(el) =>
+                      el && el.scrollIntoView({ behavior: "smooth" })
+                    }
+                  />
+                  {/* Add ref for auto-scroll */}
+                </React.Fragment>
+              ))
+            ) : (
+              <div className="alternate-style">
+                <div className="center-container">
+                  <FontAwesomeIcon
+                    icon={faRobot}
+                    className="text-slate-400 p-5"
+                    size="6x"
+                  />
+                  <p className="no-messages p-5 text-xl">
+                    Hello, SRBDian! I'm SRBD-Bot. <br></br>
+                    <br></br>Ask me anything you want related to:
+                  </p>
+                  <div className="list-container">
+                    <div className="list-column">
+                      <ul>
+                        <li>Item 1</li>
+                        <li>Item 2</li>
+                        <li>Item 3</li>
+                      </ul>
+                    </div>
+                    <div className="list-column">
+                      <ul>
+                        <li>Item 4</li>
+                        <li>Item 5</li>
+                        <li>Item 6</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <footer className="bg-blue-50 p-10">
+
+          <footer className="bg-gradient-to-r from-blue-50 to-blue-100 p-10">
             <form onSubmit={handleSubmit}>
               <fieldset className="flex gap-2" disabled={generateResponse}>
                 <textarea

@@ -3,10 +3,45 @@
 @tailwind utilities;
 
 @layer components {
-    .btn {
-        @apply rounded-md bg-blue-500 px-4 py-2 text-white font-bold hover:bg-blue-600 disabled:bg-blue-300;
-    }
-    .side-menu-item {
-        @apply m-2 p-2 flex items-center gap-4 rounded-md hover:bg-blue-400
-    }
+  .btn {
+    @apply rounded-md bg-blue-500 px-4 py-2 text-white font-bold hover:bg-blue-600 disabled:bg-blue-300;
+  }
+  .side-menu-item {
+    @apply m-2 p-2 flex items-center gap-4 rounded-md hover:bg-blue-400;
+  }
+  /* Add these styles to your CSS */
+  .alternate-style {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%; /* Optionally, set the height to 100% if you want it to take the full height */
+  }
+
+  .center-container {
+    text-align: center;
+  }
+
+  .no-messages {
+    color: slategray; /* Set the text color to slate-600 */
+  }
+
+  .list-container {
+    display: flex;
+    justify-content: center;
+  }
+
+  .list-column {
+    margin: 0 20px; /* Adjust the margin as needed */
+    @apply text-left
+  }
+
+  ul {
+    list-style-type: disc;
+    padding: 0;
+  }
+
+  li {
+    margin-bottom: 8px; /* Adjust the margin as needed */
+    color: slategray;
+  }
 }
