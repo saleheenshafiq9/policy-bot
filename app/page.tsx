@@ -25,18 +25,10 @@ export default function Home() {
   >([]);
   const [responseIndex, setResponseIndex] = useState(0);
   const [generateResponse, setGenerateResponse] = useState(false);
-  const [chatList, setChatList] = useState([
-    // Sample chat history data
-    {
-      _id: uuid(),
-      content: "Hello, SRBD-BOT!",
-    },
-    {
-      _id: uuid(),
-      content: "Hi there! How can I help you today?",
-    },
-    // Add more dummy messages as needed
-  ] as any[]);
+  const [chatList, setChatList] = useState(() => {
+    const storedChatList = localStorage.getItem("chatList");
+    return storedChatList ? JSON.parse(storedChatList) : [];
+  });
   const textareaRef = useRef<HTMLTextAreaElement>(null); // Create a ref for the textarea
 
   useEffect(() => {
@@ -98,14 +90,39 @@ export default function Home() {
   };
 
   const handleNewChatClick = () => {
+    if (messageTitle.trim() === "") {
+      return;
+    }
+    
+    const existingChatSessionsString = localStorage.getItem("chatSessions");
+    const existingChatSessions = existingChatSessionsString
+      ? JSON.parse(existingChatSessionsString)
+      : [];
+
+    // Create a unique identifier for the current session (you can use a timestamp, uuid, or any unique identifier)
+    const sessionId = uuid(); // Assuming you have the uuid library available
+
+    // Save the current chat session data along with its unique identifier
+    const currentChatSession = {
+      sessionId,
+      messageTexts: newMsg.map((msg) => msg.content),
+      responses,
+    };
+
+    // Add the current session to the existing chat sessions
+    const updatedChatSessions = [currentChatSession, ...existingChatSessions];
+
+    // Save the updated chat sessions to local storage
+    localStorage.setItem("chatSessions", JSON.stringify(updatedChatSessions));
     // Add a new chat to chatList
     const newChat = {
-      _id: uuid(),
+      _id: sessionId,
       content: messageTitle, // Set content to the current messageText state
     };
 
     // Update the chatList state with the new chat
-    setChatList((prevChatList) => [newChat, ...prevChatList]);
+    setChatList((prevChatList: any) => [newChat, ...prevChatList]);
+    localStorage.setItem("chatSessions", JSON.stringify(updatedChatSessions));
 
     // Reset necessary states
     setResponses([]);
@@ -115,6 +132,39 @@ export default function Home() {
     setMessageText(""); // Optionally reset messageText to empty string
     setMessageTitle("");
   };
+
+  const handlePreviousChat = (sessionId: any) => {
+    // When you need to retrieve the specific chat data
+    const existingChatSessionsString = localStorage.getItem("chatSessions");
+    const existingChatSessions = existingChatSessionsString
+      ? JSON.parse(existingChatSessionsString)
+      : [];
+
+    // Find the chat session with the specified sessionId
+    const chatSession = existingChatSessions.find(
+      (session: { sessionId: any }) => session.sessionId === sessionId
+    );
+
+    if (chatSession) {
+      // Now, `chatSession` contains the data for the specified session
+      const messageTexts = chatSession.messageTexts;
+      const responses = chatSession.responses;
+      setNewMsg(
+        messageTexts.map((content: any, index: any) => ({
+          _id: `${sessionId}_${index}`, // Assuming each message has a unique _id
+          role: "user",
+          content,
+        }))
+      );
+      setResponses(responses);
+      console.log(newMsg);
+      // Use the data as needed in your application logic
+      // ...
+    } else {
+      console.error(`Chat session with sessionId ${sessionId} not found`);
+    }
+  };
+
   return (
     <>
       <Head>
@@ -131,17 +181,38 @@ export default function Home() {
             New Chat
           </Link>
           <div className="flex-1 overflow-auto">
-            {chatList.map((chatItem, index) => (
-              <Link
-                key={index}
-                href="/chat" // Update the href based on your requirements
-                className="side-menu-item bg-blue-500 hover:bg-blue-700 text-white"
-              >
-                {/* Display chat item content here, adjust as needed */}
-                <FontAwesomeIcon icon={faMessage} className="text-white" />
-                {chatItem.content}
-              </Link>
-            ))}
+            {chatList.map(
+              (
+                chatItem: {
+                  _id: any;
+                  content:
+                    | string
+                    | number
+                    | boolean
+                    | React.ReactElement<
+                        any,
+                        string | React.JSXElementConstructor<any>
+                      >
+                    | Iterable<React.ReactNode>
+                    | React.ReactPortal
+                    | React.PromiseLikeOfReactNode
+                    | null
+                    | undefined;
+                },
+                index: React.Key | null | undefined
+              ) => (
+                <Link
+                  key={index}
+                  href="/" // Update the href based on your requirements
+                  onClick={() => handlePreviousChat(chatItem._id)}
+                  className="side-menu-item bg-blue-500 hover:bg-blue-700 text-white"
+                >
+                  {/* Display chat item content here, adjust as needed */}
+                  <FontAwesomeIcon icon={faMessage} className="text-white" />
+                  {chatItem.content}
+                </Link>
+              )
+            )}
           </div>
           {/* Using size attribute */}
           <FontAwesomeIcon
