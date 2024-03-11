@@ -90,47 +90,58 @@ export default function Home() {
   };
 
   const handleNewChatClick = () => {
-    if (messageTitle.trim() === "") {
+    if (messageTitle.trim() === "" && newMsg.length === 0) {
       return;
     }
-    
-    const existingChatSessionsString = localStorage.getItem("chatSessions");
-    const existingChatSessions = existingChatSessionsString
-      ? JSON.parse(existingChatSessionsString)
-      : [];
 
-    // Create a unique identifier for the current session (you can use a timestamp, uuid, or any unique identifier)
-    const sessionId = uuid(); // Assuming you have the uuid library available
+    if (messageTitle.trim() === "" && newMsg.length > 0) {
+      setResponses([]);
+      setNewMsg([]);
+      setResponseIndex(0);
+      setGenerateResponse(false);
+      setMessageText(""); // Optionally reset messageText to empty string
+      setMessageTitle("");
+    } else {
+      const existingChatSessionsString = localStorage.getItem("chatSessions");
+      const existingChatSessions = existingChatSessionsString
+        ? JSON.parse(existingChatSessionsString)
+        : [];
 
-    // Save the current chat session data along with its unique identifier
-    const currentChatSession = {
-      sessionId,
-      messageTexts: newMsg.map((msg) => msg.content),
-      responses,
-    };
+      // Create a unique identifier for the current session (you can use a timestamp, uuid, or any unique identifier)
+      const sessionId = uuid(); // Assuming you have the uuid library available
 
-    // Add the current session to the existing chat sessions
-    const updatedChatSessions = [currentChatSession, ...existingChatSessions];
+      // Save the current chat session data along with its unique identifier
+      const currentChatSession = {
+        sessionId,
+        messageTexts: newMsg.map((msg) => msg.content),
+        responses,
+        createdAt: new Date().toISOString(), // Add the creation timestamp
+      };
 
-    // Save the updated chat sessions to local storage
-    localStorage.setItem("chatSessions", JSON.stringify(updatedChatSessions));
-    // Add a new chat to chatList
-    const newChat = {
-      _id: sessionId,
-      content: messageTitle, // Set content to the current messageText state
-    };
+      // Add the current session to the existing chat sessions
+      const updatedChatSessions = [currentChatSession, ...existingChatSessions];
 
-    // Update the chatList state with the new chat
-    setChatList((prevChatList: any) => [newChat, ...prevChatList]);
-    localStorage.setItem("chatSessions", JSON.stringify(updatedChatSessions));
+      // Save the updated chat sessions to local storage
+      localStorage.setItem("chatSessions", JSON.stringify(updatedChatSessions));
+      // Add a new chat to chatList
+      const newChat = {
+        _id: sessionId,
+        content: messageTitle, // Set content to the current messageText state
+        createdAt: new Date().toISOString(), // Add the creation timestamp
+      };
 
-    // Reset necessary states
-    setResponses([]);
-    setNewMsg([]);
-    setResponseIndex(0);
-    setGenerateResponse(false);
-    setMessageText(""); // Optionally reset messageText to empty string
-    setMessageTitle("");
+      // Update the chatList state with the new chat
+      setChatList((prevChatList: any) => [newChat, ...prevChatList]);
+      localStorage.setItem("chatSessions", JSON.stringify(updatedChatSessions));
+
+      // Reset necessary states
+      setResponses([]);
+      setNewMsg([]);
+      setResponseIndex(0);
+      setGenerateResponse(false);
+      setMessageText(""); // Optionally reset messageText to empty string
+      setMessageTitle("");
+    }
   };
 
   const handlePreviousChat = (sessionId: any) => {
@@ -164,6 +175,28 @@ export default function Home() {
       console.error(`Chat session with sessionId ${sessionId} not found`);
     }
   };
+  const formatTimestamp = (timestamp: string | number | Date) => {
+    const currentDate = new Date();
+    const providedDate = new Date(timestamp);
+
+    const timeDifferenceInSeconds = Math.floor(
+      (currentDate.getTime() - providedDate.getTime()) / 1000
+    );
+
+    const minutes = Math.floor(timeDifferenceInSeconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 1) {
+      return `${days} d`;
+    } else if (hours > 1) {
+      return `${hours} hr`;
+    } else if (minutes > 1) {
+      return `${minutes} min`;
+    } else {
+      return "now";
+    }
+  };
 
   return (
     <>
@@ -171,53 +204,60 @@ export default function Home() {
         <title>SRBD Bot</title>
       </Head>
       <div className="grid h-screen grid-cols-[260px_1fr]">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-700 text-white flex flex-col overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-50 to-blue-200 text-blue-600 flex flex-col overflow-hidden">
+          <div className="flex justify-center items-center p-5">
+            <Image
+              src="/logo_blue.png" // Path to the image from the public folder
+              alt="logo"
+              width={100} // Adjust the width of the image
+              height={50} // Adjust the height of the image
+              objectFit="contain" // Preserve the aspect ratio and center the image
+              style={{ opacity: 0.7 }}
+            />
+          </div>
           <Link
             href="/"
             onClick={handleNewChatClick} // Add the click handler to reset states
-            className="side-menu-item bg-zinc-50 hover:bg-blue-100 text-blue-600"
+            className="side-menu-item bg-blue-600 hover:bg-blue-500 text-white"
           >
-            <FontAwesomeIcon icon={faPlus} className="text-blue-600" />
+            <FontAwesomeIcon icon={faPlus} className="text-white" />
             New Chat
           </Link>
           <div className="flex-1 overflow-auto">
             {chatList.map(
               (
-                chatItem: {
-                  _id: any;
-                  content:
-                    | string
-                    | number
-                    | boolean
-                    | React.ReactElement<
-                        any,
-                        string | React.JSXElementConstructor<any>
-                      >
-                    | Iterable<React.ReactNode>
-                    | React.ReactPortal
-                    | React.PromiseLikeOfReactNode
-                    | null
-                    | undefined;
-                },
+                chatItem: { _id: any; content: string; createdAt: string },
                 index: React.Key | null | undefined
               ) => (
                 <Link
                   key={index}
                   href="/" // Update the href based on your requirements
                   onClick={() => handlePreviousChat(chatItem._id)}
-                  className="side-menu-item bg-blue-500 hover:bg-blue-700 text-white"
+                  className="side-menu-item bg-blue-50 hover:bg-blue-100 text-blue-600"
                 >
-                  {/* Display chat item content here, adjust as needed */}
-                  <FontAwesomeIcon icon={faMessage} className="text-white" />
-                  {chatItem.content}
+                  <div className="flex items-center">
+                    <div className="chat-content">
+                      <FontAwesomeIcon
+                        icon={faMessage}
+                        className="text-blue-600"
+                      />
+                      <span className="ml-2">{chatItem.content}</span>
+                    </div>
+                    <div className="flex-grow" />{" "}
+                    {/* This will push the timestamp to the right */}
+                    <div className="timestamp text-xs text-gray-500">
+                      {formatTimestamp(chatItem.createdAt)}
+                    </div>
+                  </div>
                 </Link>
               )
             )}
           </div>
+
           {/* Using size attribute */}
           <FontAwesomeIcon
             icon={faRobot}
-            className="text-blue-200 pt-5"
+            className="text-blue-600 pt-5"
             size="4x"
           />
 

@@ -1,34 +1,43 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import Modal from "react-modal";
 import {
   faRobot,
   faUser,
-  faThumbsUp,
-  faThumbsDown,
+  faThumbsUp as solidThumbsUp,
+  faThumbsDown as solidThumbsDown,
 } from "@fortawesome/free-solid-svg-icons";
-import Image from "next/image";
+import {
+  faThumbsUp as outlineThumbsUp,
+  faThumbsDown as outlineThumbsDown,
+} from "@fortawesome/free-regular-svg-icons";
 
 export const Message = ({ role, content, source }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [isDisliked, setIsDisliked] = useState(false);
-  const [isLikeInvisible, setIsLikeInvisible] = useState(false);
-  const [isDislikeInvisible, setIsDislikeInvisible] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
 
-  const handleDislikeClick = () => {
-    setIsDisliked(true);
-    setIsLikeInvisible(true);
-    setShowDropdown(true);
+  const handleLikeClick = () => {
+    setIsLiked(!isLiked);
+    setIsDisliked(false);
   };
 
-  const handleDropdownOptionClick = (option) => {
-    // Handle logic based on the selected dropdown option
-    console.log(`Selected option: ${option}`);
+  const handleDislikeClick = () => {
+    setIsDisliked(!isDisliked);
+    setIsLiked(false);
+    setModalIsOpen(true); // Open the modal on dislike click
+  };
 
-    // You can add more specific logic based on the selected option, e.g., open a modal, send a request, etc.
+  const closeModal = () => {
+    setModalIsOpen(false);
+  };
 
-    // Close the dropdown after handling the option
-    setShowDropdown(false);
+  const handleFeedbackSubmit = () => {
+    // Add your logic for handling the feedback submission
+    console.log("Message Content:", content);
+    console.log("Feedback submitted:", feedbackText);
+    closeModal();
   };
 
   return (
@@ -39,12 +48,12 @@ export const Message = ({ role, content, source }) => {
     >
       <div>
         {role === "user" && (
-          <div className="flex h-[30px] w-[30px] items-center justify-center rounded-sm shadow-md shadow-blue-500/50 bg-blue-500">
+          <div className="flex h-[30px] w-[30px] items-center justify-center rounded-full shadow-md shadow-blue-500/50 bg-blue-500">
             <FontAwesomeIcon icon={faUser} className="text-blue-200" />
           </div>
         )}
         {role === "SRBD-BOT" && (
-          <div className="flex h-[30px] w-[30px] items-center justify-center rounded-sm shadow-md shadow-blue-500/50 bg-blue-800">
+          <div className="flex h-[30px] w-[30px] items-center justify-center rounded-full shadow-md shadow-blue-500/50 bg-blue-800">
             <FontAwesomeIcon icon={faRobot} className="text-blue-200" />
           </div>
         )}
@@ -55,50 +64,54 @@ export const Message = ({ role, content, source }) => {
           <div className="text-sm text-gray-500 mt-4">
             {source}
             <div className="text-right">
-              {!isLikeInvisible ? (
-                <FontAwesomeIcon
-                  icon={faThumbsUp}
-                  className={`cursor-pointer ${
-                    isLiked
-                      ? "text-blue-600 text-xl px-2"
-                      : "text-blue-400 hover:text-blue-600 text-xl px-2"
-                  }`}
-                  onClick={() => {
-                    setIsLiked(true);
-                    setIsDislikeInvisible(true);
-                  }}
-                />
-              ) : (
-                ""
-              )}
-              {!isDislikeInvisible && (
-                <FontAwesomeIcon
-                  icon={faThumbsDown}
-                  className={`cursor-pointer ${
-                    isDisliked
-                      ? "text-slate-600 text-xl px-2"
-                      : "text-slate-400 hover:text-slate-600 text-xl px-2"
-                  }`}
-                  onClick={handleDislikeClick}
-                />
-              )}
-              {showDropdown && (
-                <div className="absolute top-23 right-0 bg-white border border-gray-300 rounded-md shadow-md p-2">
-                  <div
-                    className="cursor-pointer text-slate-400 hover:text-white hover:bg-blue-600"
-                    onClick={() => handleDropdownOptionClick("Report Issue")}
-                  >
-                    Report Issue
+              <FontAwesomeIcon
+                icon={isLiked ? solidThumbsUp : outlineThumbsUp}
+                className={`cursor-pointer text-xl px-2 ${
+                  isLiked
+                    ? "text-blue-600"
+                    : "text-blue-400 hover:text-blue-600"
+                }`}
+                onClick={handleLikeClick}
+              />
+
+              {/* Thumbs Down */}
+              <FontAwesomeIcon
+                icon={isDisliked ? solidThumbsDown : outlineThumbsDown}
+                className={`cursor-pointer text-xl px-2 ${
+                  isDisliked
+                    ? "text-slate-600"
+                    : "text-slate-400 hover:text-slate-600"
+                }`}
+                onClick={handleDislikeClick}
+              />
+              <Modal
+                isOpen={modalIsOpen}
+                onRequestClose={closeModal}
+                contentLabel="Feedback Modal"
+                className="custom-modal"
+                overlayClassName="custom-modal-overlay"
+              >
+                <div className="modal-content">
+                  <h2 className="modal-header">Feedback Form</h2>
+                  <p>Please provide your feedback or report an incident:</p>
+                  {/* Include the original message content in the feedback textarea */}
+                  <textarea
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    placeholder="Type your feedback here..."
+                    rows={4}
+                    className="feedback-textarea"
+                  />
+                  <div className="button-container">
+                    <button onClick={handleFeedbackSubmit} className="btn">
+                      Submit
+                    </button>
+                    {/* <button onClick={closeModal} className="close-btn">
+                      <span>&times;</span>
+                    </button> */}
                   </div>
-                  <div
-                    className="cursor-pointer text-slate-400 hover:text-white hover:bg-blue-600"
-                    onClick={() => handleDropdownOptionClick("Give Feedback")}
-                  >
-                    Give Feedback
-                  </div>
-                  {/* Add other options as needed */}
                 </div>
-              )}
+              </Modal>
             </div>
           </div>
         )}
