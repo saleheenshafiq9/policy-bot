@@ -30,6 +30,7 @@ export default function Home() {
     return storedChatList ? JSON.parse(storedChatList) : [];
   });
   const textareaRef = useRef<HTMLTextAreaElement>(null); // Create a ref for the textarea
+  const [currentSessionId, setCurrentSessionId] = useState();
 
   useEffect(() => {
     // Load chat history from local storage when the component mounts
@@ -50,10 +51,96 @@ export default function Home() {
   }, [newMsg, responses, chatList]);
 
   useEffect(() => {
+    console.log(currentSessionId);
+  }, [currentSessionId]);
+
+  useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
   }, [messageText, generateResponse]);
+
+  const updateChatList = (newMsg: any[], responses: ResponseData[]) => {
+    const existingChatSessionsString = localStorage.getItem("chatSessions");
+    const existingChatSessions = existingChatSessionsString
+      ? JSON.parse(existingChatSessionsString)
+      : [];
+
+    const existingChatIndex = chatList.findIndex(
+      (chat: { _id: number }) => chat._id === currentSessionId
+    );
+    console.log(existingChatIndex);
+
+    if (existingChatIndex !== -1) {
+      // Update the existing chat session in chatList
+      const updatedChatList = chatList.map((chat: any, index: any) => {
+        if (index === existingChatIndex) {
+          // Update content and creation timestamp of the existing session
+          return {
+            ...chat,
+            content: newMsg[0].content,
+            createdAt: new Date().toISOString(),
+          };
+        }
+        return chat;
+      });
+
+      // Update chatList state with the updated chat session
+      setChatList(updatedChatList);
+
+      // Update corresponding existingChatSession
+      const updatedExistingChatSession = {
+        ...existingChatSessions[existingChatIndex],
+        messageTexts: newMsg.map((msg) => msg.content),
+        responses,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Update existing chat sessions with the modified session
+      const updatedChatSessions = [
+        ...existingChatSessions.slice(0, existingChatIndex),
+        updatedExistingChatSession,
+        ...existingChatSessions.slice(existingChatIndex + 1),
+      ];
+
+      // Save the updated chat sessions to local storage
+      localStorage.setItem("chatSessions", JSON.stringify(updatedChatSessions));
+    } else {
+      const sessionId = uuid(); // Assuming you have the uuid library available
+
+      const newChat = {
+        _id: sessionId,
+        content: newMsg[0].content, // Set content to the current messageText state
+        createdAt: new Date().toISOString(), // Add the creation timestamp
+      };
+
+      // Update the chatList state with the new chat
+      setChatList((prevChatList: any) => [newChat, ...prevChatList]);
+
+      const currentChatSession = {
+        sessionId,
+        messageTexts: newMsg.map((msg) => msg.content),
+        responses,
+        createdAt: new Date().toISOString(), // Add the creation timestamp
+      };
+
+      // Add the current session to the existing chat sessions
+      const updatedChatSessions = [currentChatSession, ...existingChatSessions];
+
+      // Save the updated chat sessions to local storage
+      localStorage.setItem("chatSessions", JSON.stringify(updatedChatSessions));
+    }
+  };
+
+  const cleanThingsUp = () => {
+    setResponses([]);
+    setNewMsg([]);
+    setResponseIndex(0);
+    setGenerateResponse(false);
+    setMessageText(""); // Optionally reset messageText to empty string
+    setMessageTitle("");
+    setCurrentSessionId(undefined);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,56 +182,16 @@ export default function Home() {
     }
 
     if (messageTitle.trim() === "" && newMsg.length > 0) {
-      setResponses([]);
-      setNewMsg([]);
-      setResponseIndex(0);
-      setGenerateResponse(false);
-      setMessageText(""); // Optionally reset messageText to empty string
-      setMessageTitle("");
+      cleanThingsUp();
     } else {
-      const existingChatSessionsString = localStorage.getItem("chatSessions");
-      const existingChatSessions = existingChatSessionsString
-        ? JSON.parse(existingChatSessionsString)
-        : [];
-
-      // Create a unique identifier for the current session (you can use a timestamp, uuid, or any unique identifier)
-      const sessionId = uuid(); // Assuming you have the uuid library available
-
-      // Save the current chat session data along with its unique identifier
-      const currentChatSession = {
-        sessionId,
-        messageTexts: newMsg.map((msg) => msg.content),
-        responses,
-        createdAt: new Date().toISOString(), // Add the creation timestamp
-      };
-
-      // Add the current session to the existing chat sessions
-      const updatedChatSessions = [currentChatSession, ...existingChatSessions];
-
-      // Save the updated chat sessions to local storage
-      localStorage.setItem("chatSessions", JSON.stringify(updatedChatSessions));
-      // Add a new chat to chatList
-      const newChat = {
-        _id: sessionId,
-        content: messageTitle, // Set content to the current messageText state
-        createdAt: new Date().toISOString(), // Add the creation timestamp
-      };
-
-      // Update the chatList state with the new chat
-      setChatList((prevChatList: any) => [newChat, ...prevChatList]);
-      localStorage.setItem("chatSessions", JSON.stringify(updatedChatSessions));
-
-      // Reset necessary states
-      setResponses([]);
-      setNewMsg([]);
-      setResponseIndex(0);
-      setGenerateResponse(false);
-      setMessageText(""); // Optionally reset messageText to empty string
-      setMessageTitle("");
+      // Update chatList
+      updateChatList(newMsg, responses);
+      cleanThingsUp();
     }
   };
 
   const handlePreviousChat = (sessionId: any) => {
+    setCurrentSessionId(sessionId);
     // When you need to retrieve the specific chat data
     const existingChatSessionsString = localStorage.getItem("chatSessions");
     const existingChatSessions = existingChatSessionsString
@@ -168,13 +215,13 @@ export default function Home() {
         }))
       );
       setResponses(responses);
-      console.log(newMsg);
       // Use the data as needed in your application logic
       // ...
     } else {
       console.error(`Chat session with sessionId ${sessionId} not found`);
     }
   };
+
   const formatTimestamp = (timestamp: string | number | Date) => {
     const currentDate = new Date();
     const providedDate = new Date(timestamp);
@@ -187,16 +234,28 @@ export default function Home() {
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (days > 1) {
+    if (days >= 1) {
       return `${days} d`;
-    } else if (hours > 1) {
+    } else if (hours >= 1) {
       return `${hours} hr`;
-    } else if (minutes > 1) {
+    } else if (minutes >= 1) {
       return `${minutes} min`;
     } else {
       return "now";
     }
   };
+
+  const sortChatListByTimestamp = (chatList: any[]) => {
+    return chatList
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+  };
+
+  // Call the function to sort chatList before rendering and store the sorted data
+  const sortedChatList = sortChatListByTimestamp(chatList);
 
   return (
     <>
@@ -209,8 +268,8 @@ export default function Home() {
             <Image
               src="/logo_blue.png" // Path to the image from the public folder
               alt="logo"
-              width={100} // Adjust the width of the image
-              height={50} // Adjust the height of the image
+              width={160} // Adjust the width of the image
+              height={80} // Adjust the height of the image
               objectFit="contain" // Preserve the aspect ratio and center the image
               style={{ opacity: 0.7 }}
             />
@@ -218,13 +277,13 @@ export default function Home() {
           <Link
             href="/"
             onClick={handleNewChatClick} // Add the click handler to reset states
-            className="side-menu-item bg-blue-600 hover:bg-blue-500 text-white"
+            className="side-menu-item bg-blue-600 hover:bg-blue-500 text-white font-semibold"
           >
             <FontAwesomeIcon icon={faPlus} className="text-white" />
             New Chat
           </Link>
           <div className="flex-1 overflow-auto">
-            {chatList.map(
+            {sortedChatList.map(
               (
                 chatItem: { _id: any; content: string; createdAt: string },
                 index: React.Key | null | undefined
@@ -235,17 +294,20 @@ export default function Home() {
                   onClick={() => handlePreviousChat(chatItem._id)}
                   className="side-menu-item bg-blue-50 hover:bg-blue-100 text-blue-600"
                 >
-                  <div className="flex items-center">
+                  <div className="items-center">
                     <div className="chat-content">
                       <FontAwesomeIcon
                         icon={faMessage}
                         className="text-blue-600"
                       />
-                      <span className="ml-2">{chatItem.content}</span>
+                      <span className="ml-2 font-semibold">
+                        {chatItem.content.length > 25
+                          ? chatItem.content.substring(0, 25) + "..."
+                          : chatItem.content}
+                      </span>
                     </div>
-                    <div className="flex-grow" />{" "}
                     {/* This will push the timestamp to the right */}
-                    <div className="timestamp text-xs text-gray-500">
+                    <div className="timestamp text-xs text-gray-500 ml-40 pl-3 text-right p-1">
                       {formatTimestamp(chatItem.createdAt)}
                     </div>
                   </div>
@@ -262,7 +324,7 @@ export default function Home() {
           />
 
           {/* Text underneath */}
-          <div className="mt-2 text-xl justify-center items-center flex flex-col p-3">
+          <div className="mt-2 text-xl justify-center items-center flex flex-col p-3 font-semibold">
             SRBD-BOT
           </div>
         </div>
@@ -331,7 +393,7 @@ export default function Home() {
             )}
           </div>
 
-          <footer className="bg-gradient-to-r from-blue-50 to-blue-100 p-10">
+          <footer className="bg-gradient-to-r from-blue-50 to-blue-100 p-7">
             <form onSubmit={handleSubmit}>
               <fieldset className="flex gap-2" disabled={generateResponse}>
                 <textarea
