@@ -30,7 +30,10 @@ export default function Home() {
     return storedChatList ? JSON.parse(storedChatList) : [];
   });
   const textareaRef = useRef<HTMLTextAreaElement>(null); // Create a ref for the textarea
-  const [currentSessionId, setCurrentSessionId] = useState();
+  const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(
+    undefined
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     // Load chat history from local storage when the component mounts
@@ -60,6 +63,12 @@ export default function Home() {
     }
   }, [messageText, generateResponse]);
 
+  useEffect(() => {
+    if (newMsg.length > 0) {
+      updateChatList(newMsg, responses);
+    }
+  }, [responses]);
+
   const updateChatList = (newMsg: any[], responses: ResponseData[]) => {
     const existingChatSessionsString = localStorage.getItem("chatSessions");
     const existingChatSessions = existingChatSessionsString
@@ -67,7 +76,7 @@ export default function Home() {
       : [];
 
     const existingChatIndex = chatList.findIndex(
-      (chat: { _id: number }) => chat._id === currentSessionId
+      (chat: { _id: string }) => chat._id === currentSessionId
     );
     console.log(existingChatIndex);
 
@@ -107,6 +116,7 @@ export default function Home() {
       localStorage.setItem("chatSessions", JSON.stringify(updatedChatSessions));
     } else {
       const sessionId = uuid(); // Assuming you have the uuid library available
+      setCurrentSessionId(sessionId);
 
       const newChat = {
         _id: sessionId,
@@ -171,8 +181,10 @@ export default function Home() {
       // Reset the responseIndex to the last index in the responses array
       setResponseIndex(responses.length);
       setGenerateResponse(false);
+      setErrorMessage(null);
     } catch (error) {
       console.error("Error:", error);
+      setErrorMessage("An error occurred. Please try again later.");
     }
   };
 
@@ -184,8 +196,7 @@ export default function Home() {
     if (messageTitle.trim() === "" && newMsg.length > 0) {
       cleanThingsUp();
     } else {
-      // Update chatList
-      updateChatList(newMsg, responses);
+      // updateChatList(newMsg, responses);
       cleanThingsUp();
     }
   };
@@ -353,11 +364,12 @@ export default function Home() {
                   )}
 
                   <div
-                    ref={(el) =>
-                      el && el.scrollIntoView({ behavior: "smooth" })
-                    }
+                    ref={(el) => {
+                      if (el && !document.querySelector(":focus")) {
+                        el.scrollIntoView({ behavior: "smooth" });
+                      }
+                    }}
                   />
-                  {/* Add ref for auto-scroll */}
                 </React.Fragment>
               ))
             ) : (
@@ -392,7 +404,15 @@ export default function Home() {
               </div>
             )}
           </div>
-
+          {errorMessage && (
+            <div
+              className="w-full bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+              role="alert"
+            >
+              <strong className="font-bold">Error:</strong>
+              <span className="block sm:inline ml-2">{errorMessage}</span>
+            </div>
+          )}
           <footer className="bg-gradient-to-r from-blue-50 to-blue-100 p-7">
             <form onSubmit={handleSubmit}>
               <fieldset className="flex gap-2" disabled={generateResponse}>
@@ -407,7 +427,7 @@ export default function Home() {
                       handleSubmit(e); // Call your submit function
                     }
                   }}
-                  placeholder={generateResponse ? "" : "Ask me anything..."}
+                  placeholder={generateResponse ? "" : "Ask me about SRBD policies..."}
                   autoFocus
                   className="w-full resize-none rounded-md bg-blue-50 text-black focus:border-blue-500 focus:bg-zinc-50 focus:outline-blue-500 p-1"
                 />
